@@ -1,0 +1,243 @@
+name: 🛠️ SKILL.md Frontmatter
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/SKILL.md'
+      - 'scripts/validate-skill-frontmatter.sh'
+      - 'scripts/autofix-skill-frontmatter.py'
+      - '.github/workflows/fix-skills-frontmatter.yaml'
+  pull_request:
+    paths:
+      - '**/SKILL.md'
+  workflow_dispatch:
+    inputs:
+      auto_fix:
+        description: 'Run auto-fixer for broken frontmatter'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: fix-skills-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: 🔍 Validate
+    runs-on: ubuntu-latest
+    outputs:
+      broken_count: ${{ steps.scan.outputs.broken_count }}
+      broken_files: ${{ steps.scan.outputs.broken_files }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan SKILL.md files
+        id: scan
+        run: |
+          set +e
+          # Only list errors (not warnings) for the auto-fix loop; warnings
+          # are advisory and shouldn't trigger Copilot runs.
+          ./scripts/validate-skill-frontmatter.sh --quiet > /tmp/broken.txt
+          rc=$?
+          # Filter blank lines defensively
+          sed -i '/^$/d' /tmp/broken.txt || true
+          count=$(wc -l < /tmp/broken.txt | tr -d ' ')
+          echo "broken_count=$count" >> "$GITHUB_OUTPUT"
+          files=$(tr '\n' ' ' < /tmp/broken.txt | sed 's/ $//')
+          echo "broken_files<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$files" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "Found $count file(s) with errors (validator exit: $rc)"
+          if [ "$count" -gt 0 ]; then
+            echo "::warning title=Skill frontmatter errors::$count SKILL.md file(s) need fixes"
+            # Print the full human-readable report to the job log
+            ./scripts/validate-skill-frontmatter.sh || true
+          fi
+          exit 0
+
+      - name: Write job summary
+        run: |
+          {
+            echo "## Skill Frontmatter Validation"
+            echo ""
+            if [ "${{ steps.scan.outputs.broken_count }}" = "0" ]; then
+              echo "✅ All \`SKILL.md\` files have valid frontmatter."
+            else
+              echo "❌ Found **${{ steps.scan.outputs.broken_count }}** file(s) with invalid frontmatter:"
+              echo ""
+              echo '```'
+              ./scripts/validate-skill-frontmatter.sh || true
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  fix:
+    name: 🛠️ Auto-fix
+    needs: validate
+    if: >-
+      needs.validate.outputs.broken_count != '0' &&
+      (github.event_name == 'push' ||
+       github.event_name == 'pull_request' ||
+       (github.event_name == 'workflow_dispatch' && inputs.auto_fix))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Use PAT when available so the pushed commit can retrigger workflows
+          # (release-agents.yaml, Context7 sync). Falls back to GITHUB_TOKEN.
+          token: ${{ secrets.AUTOFIX_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Deterministic fixer
+        id: deterministic
+        run: |
+          python3 scripts/autofix-skill-frontmatter.py
+
+      - name: Check for remaining errors
+        id: recheck
+        run: |
+          set +e
+          ./scripts/validate-skill-frontmatter.sh --quiet > /tmp/still_broken.txt
+          sed -i '/^$/d' /tmp/still_broken.txt || true
+          count=$(wc -l < /tmp/still_broken.txt | tr -d ' ')
+          echo "remaining=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -gt 0 ]; then
+            echo "::notice::$count file(s) still invalid after deterministic pass — falling back to Copilot CLI"
+            tr '\n' ' ' < /tmp/still_broken.txt
+            echo
+          else
+            echo "✅ Deterministic fixer repaired all files."
+          fi
+
+      - name: Set up Node.js (for Copilot fallback)
+        if: steps.recheck.outputs.remaining != '0'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install GitHub Copilot CLI (fallback)
+        if: steps.recheck.outputs.remaining != '0'
+        run: npm install -g @github/copilot
+
+      - name: LLM fallback — fix remaining with Copilot (Claude Opus 4.7)
+        if: steps.recheck.outputs.remaining != '0'
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_CLI_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_TOKEN }}
+        run: |
+          set -e
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::COPILOT_CLI_TOKEN not set; cannot run LLM fallback."
+            exit 1
+          fi
+
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            echo "::group::🤖 Copilot fixing $f"
+            dir_name="$(basename "$(dirname "$f")")"
+            diag="$(./scripts/validate-skill-frontmatter.sh 2>&1 | \
+              awk -v f="$f" '
+                /^  \[/               { reason=$0 }
+                $0 ~ f                { in_entry=1; print reason; print "    "$0; next }
+                in_entry && /^    → / { print; in_entry=0 }
+              ')"
+
+            {
+              echo "Fix the YAML frontmatter of the Agent Skill file at: $f"
+              echo ""
+              echo "Parent directory name (use this for the name field): $dir_name"
+              echo ""
+              echo "Current validator findings for this file:"
+              echo "$diag"
+              echo ""
+              cat .github/prompts/fix-skill-frontmatter.md
+            } > /tmp/prompt.md
+
+            copilot --model claude-opus-4.7 --allow-all-tools -p "$(cat /tmp/prompt.md)" 2>&1 | tail -40
+            echo "::endgroup::"
+          done < /tmp/still_broken.txt
+
+      - name: Re-validate after fixes
+        id: revalidate
+        run: |
+          set +e
+          ./scripts/validate-skill-frontmatter.sh
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push fixes
+        id: commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          count=$(git diff --staged --name-only | wc -l | tr -d ' ')
+          {
+            echo "fix(skills): auto-repair frontmatter in $count SKILL.md file(s)"
+            echo ""
+            echo "Deterministic autofix via scripts/autofix-skill-frontmatter.py,"
+            echo "following the Agent Skills spec (required: name, description)."
+            echo ""
+            echo "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+          } > /tmp/commit-msg.txt
+
+          git commit -F /tmp/commit-msg.txt
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git push origin HEAD:"${{ github.head_ref }}"
+          else
+            git push
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Refresh Context7 index
+        if: >-
+          steps.commit.outputs.changed == 'true' &&
+          github.event_name != 'pull_request'
+        env:
+          CONTEXT7_API_KEY: ${{ secrets.CONTEXT7_API_KEY }}
+        run: |
+          if [ -z "$CONTEXT7_API_KEY" ]; then
+            echo "::notice::CONTEXT7_API_KEY not set — skipping Context7 refresh."
+            exit 0
+          fi
+          echo "Requesting Context7 re-index of /5dlabs/cto-agents ..."
+          # Retry up to 3× in case another refresh is already in progress.
+          for i in 1 2 3; do
+            resp=$(curl -s -o /tmp/refresh.json -w '%{http_code}' \
+              -X POST "https://context7.com/api/v1/refresh" \
+              -H "Authorization: Bearer $CONTEXT7_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"libraryName":"/5dlabs/cto-agents"}')
+            cat /tmp/refresh.json; echo
+            if [ "$resp" = "200" ]; then
+              echo "✅ Context7 refresh triggered."
+              exit 0
+            fi
+            if grep -q user-has-active-task /tmp/refresh.json; then
+              echo "Another task is in progress; waiting 60s before retry $i/3 ..."
+              sleep 60
+              continue
+            fi
+            echo "::warning::Context7 refresh returned HTTP $resp"
+            break
+          done
+          # Non-fatal: don't fail the whole workflow because of re-index issues
+          exit 0
+
+      - name: Fail if any file remains invalid
+        if: steps.revalidate.outputs.exit_code != '0'
+        run: |
+          echo "::error::Some files still have invalid frontmatter after auto-fix."
+          echo "Review the auto-fix step output and fix manually."
+          exit 1
