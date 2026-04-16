@@ -34,8 +34,8 @@ Skills live in `rex/_default/*/SKILL.md` (not duplicated here — Context7 index
 
 ## Adding a New Tool
 
-1. Create `catalog/tools/{tool-name}.md` following the template below
-2. Update `catalog/catalog.json` with the tool entry
+1. Create `tools-catalog/tools/{tool-name}.md` following the template below
+2. Update `tools-catalog/catalog.json` with the tool entry
 3. Commit and push — Context7 re-indexes automatically
 
 ### Tool Document Template

@@ -14,7 +14,7 @@
         "teams",
         "workflows"
       ],
-      "doc_path": "catalog/tools/linear.md"
+      "doc_path": "tools-catalog/tools/linear.md"
     },
     "grafana": {
       "name": "Grafana",
@@ -28,7 +28,7 @@
         "loki",
         "prometheus"
       ],
-      "doc_path": "catalog/tools/grafana.md"
+      "doc_path": "tools-catalog/tools/grafana.md"
     },
     "github": {
       "name": "GitHub",
@@ -41,7 +41,7 @@
         "code-management",
         "branches"
       ],
-      "doc_path": "catalog/tools/github.md"
+      "doc_path": "tools-catalog/tools/github.md"
     },
     "playwright": {
       "name": "Playwright",
@@ -54,7 +54,7 @@
         "web-interaction",
         "screenshots"
       ],
-      "doc_path": "catalog/tools/playwright.md"
+      "doc_path": "tools-catalog/tools/playwright.md"
     },
     "argocd": {
       "name": "Argo CD",
@@ -68,7 +68,7 @@
         "rollback",
         "kubernetes"
       ],
-      "doc_path": "catalog/tools/argocd.md"
+      "doc_path": "tools-catalog/tools/argocd.md"
     },
     "octocode": {
       "name": "OctoCode",
@@ -81,7 +81,7 @@
         "pr-review",
         "semantic-search"
       ],
-      "doc_path": "catalog/tools/octocode.md"
+      "doc_path": "tools-catalog/tools/octocode.md"
     },
     "openmemory": {
       "name": "OpenMemory",
@@ -94,7 +94,7 @@
         "cross-session",
         "knowledge-management"
       ],
-      "doc_path": "catalog/tools/openmemory.md"
+      "doc_path": "tools-catalog/tools/openmemory.md"
     },
     "loki": {
       "name": "Loki",
@@ -107,7 +107,7 @@
         "correlations",
         "observability"
       ],
-      "doc_path": "catalog/tools/loki.md"
+      "doc_path": "tools-catalog/tools/loki.md"
     },
     "tavily": {
       "name": "Tavily",
@@ -120,7 +120,7 @@
         "extraction",
         "research"
       ],
-      "doc_path": "catalog/tools/tavily.md"
+      "doc_path": "tools-catalog/tools/tavily.md"
     },
     "perplexity": {
       "name": "Perplexity",
@@ -132,7 +132,7 @@
         "reasoning",
         "deep-research"
       ],
-      "doc_path": "catalog/tools/perplexity.md"
+      "doc_path": "tools-catalog/tools/perplexity.md"
     },
     "exa": {
       "name": "Exa",
@@ -144,7 +144,7 @@
         "code-context",
         "neural-search"
       ],
-      "doc_path": "catalog/tools/exa.md"
+      "doc_path": "tools-catalog/tools/exa.md"
     },
     "terraform": {
       "name": "Terraform",
@@ -157,7 +157,7 @@
         "modules",
         "iac"
       ],
-      "doc_path": "catalog/tools/terraform.md"
+      "doc_path": "tools-catalog/tools/terraform.md"
     },
     "solana": {
       "name": "Solana",
@@ -170,7 +170,7 @@
         "solana",
         "web3"
       ],
-      "doc_path": "catalog/tools/solana.md"
+      "doc_path": "tools-catalog/tools/solana.md"
     },
     "context7": {
       "name": "Context7",
@@ -182,7 +182,7 @@
         "library-docs",
         "code-examples"
       ],
-      "doc_path": "catalog/tools/context7.md"
+      "doc_path": "tools-catalog/tools/context7.md"
     },
     "graphql": {
       "name": "GraphQL",
@@ -194,7 +194,7 @@
         "queries",
         "api"
       ],
-      "doc_path": "catalog/tools/graphql.md"
+      "doc_path": "tools-catalog/tools/graphql.md"
     },
     "better_auth": {
       "name": "Better Auth",
@@ -206,7 +206,7 @@
         "docs-search",
         "auth-patterns"
       ],
-      "doc_path": "catalog/tools/better_auth.md"
+      "doc_path": "tools-catalog/tools/better_auth.md"
     },
     "pg_aiguide": {
       "name": "PG AI Guide",
@@ -219,7 +219,7 @@
         "database",
         "docs"
       ],
-      "doc_path": "catalog/tools/pg_aiguide.md"
+      "doc_path": "tools-catalog/tools/pg_aiguide.md"
     },
     "ai_elements": {
       "name": "AI Elements",
@@ -231,7 +231,7 @@
         "ai-generation",
         "frontend"
       ],
-      "doc_path": "catalog/tools/ai_elements.md"
+      "doc_path": "tools-catalog/tools/ai_elements.md"
     }
   },
   "skills": {
