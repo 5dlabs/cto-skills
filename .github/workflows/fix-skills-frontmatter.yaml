@@ -145,7 +145,6 @@ jobs:
             copilot \
               --model claude-opus-4.7 \
               --allow-all-tools \
-              --no-confirm \
               -p "$(cat /tmp/prompt.md)" 2>&1 \
               | tee ".copilot-logs/$(echo "$f" | tr '/' '_').log"
 
